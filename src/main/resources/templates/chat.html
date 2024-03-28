@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Chat Application</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+</head>
+<body>
+<h2>Spring Boot WebSocket Chat Application</h2>
+<label for="name">Name:</label>
+<input type="text" id="name" placeholder="Enter your name...">
+<br>
+<label for="messageInput">Message:</label>
+<input type="text" id="messageInput" placeholder="Enter a message...">
+<button onclick="sendMessage()">Send</button>
+
+<div id="messageArea">
+    <!-- Messages will be displayed here -->
+</div>
+
+<script th:inline="javascript">
+    var stompClient = null;
+
+    function connect() {
+        var socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function (frame) {
+            console.log('Connected: ' + frame);
+            stompClient.subscribe('/topic/messages', function (message) {
+                var receivedMsg = JSON.parse(message.body);
+                showMessage(receivedMsg.sender, receivedMsg.content);
+            });
+        });
+    }
+
+    function sendMessage() {
+        var name = document.getElementById('name').value;
+        var messageContent = document.getElementById('messageInput').value;
+        if (name && messageContent && stompClient) {
+            var chatMessage = {
+                sender: name,
+                content: messageContent,
+            };
+            stompClient.send("/app/sendMessage", {}, JSON.stringify(chatMessage));
+            document.getElementById('messageInput').value = '';
+        }
+    }
+
+    function showMessage(sender, message) {
+        var messageArea = document.getElementById('messageArea');
+        var messageElement = document.createElement('div');
+        messageElement.innerHTML = `<strong>${sender}</strong>: ${message}`;
+        messageArea.appendChild(messageElement);
+    }
+
+    window.addEventListener("load", connect);
+</script>
+</body>
+</html>
